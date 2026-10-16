@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pocket Toolkit</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #090d16;
+            color: #f1f5f9;
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        /* Hide scrollbar for clean UI */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .app-container {
+            width: 100%;
+            max-width: 480px;
+            height: 100dvh;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            background: #0b0f19;
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.8);
+            position: relative;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center h-[100dvh] m-0">
+
+    <div class="app-container">
+        <!-- Top Header -->
+        <header class="px-5 py-4 border-b border-slate-800/80 bg-slate-950/80 backdrop-blur flex justify-between items-center z-10">
+            <div class="flex items-center space-x-2.5">
+                <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-cyan-500 to-indigo-600 flex items-center justify-center shadow-[0_0_12px_rgba(6,182,212,0.3)]">
+                    <i class="fa-solid fa-layer-group text-white text-xs"></i>
+                </div>
+                <h1 id="headerTitle" class="font-bold text-base tracking-tight text-white">クイックメモ</h1>
+            </div>
+            <div id="headerAction" class="text-slate-400 hover:text-white transition-colors cursor-pointer text-sm">
+                <!-- Dynamic Header Action Button -->
+            </div>
+        </header>
+
+        <!-- Main Content Scrollable Area -->
+        <main class="flex-grow overflow-y-auto no-scrollbar relative p-4 pb-20">
+            
+            <!-- TAB 1: QUICK NOTES -->
+            <section id="tabNotes" class="tab-content space-y-4">
+                <div class="flex gap-2">
+                    <input type="text" id="noteTitleInput" placeholder="メモのタイトル..." class="flex-grow bg-slate-900/90 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition-colors">
+                    <button id="addNoteBtn" class="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold px-4 py-2.5 rounded-xl text-sm shadow-[0_4px_12px_rgba(6,182,212,0.3)] active:scale-95 transition-all flex items-center justify-center">
+                        <i class="fa-solid fa-plus"></i>
+                    </button>
+                </div>
+                <textarea id="noteContentInput" placeholder="内容を入力（自動保存）..." rows="3" class="w-full bg-slate-900/90 border border-slate-800 rounded-xl p-4 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition-colors resize-none"></textarea>
+                
+                <div class="flex justify-between items-center text-xs text-slate-400 px-1">
+                    <span id="noteCharCount">0 文字</span>
+                    <span id="noteSaveStatus" class="text-cyan-400"><i class="fa-solid fa-cloud-arrow-up mr-1"></i>自動保存済み</span>
+                </div>
+
+                <div class="h-[1px] bg-slate-800 my-2"></div>
+
+                <div class="flex justify-between items-center">
+                    <h2 class="text-xs font-semibold text-slate-400 tracking-wider uppercase">保存されたメモ</h2>
+                    <span id="noteCount" class="text-xs bg-slate-800 px-2 py-0.5 rounded-full text-slate-300">0件</span>
+                </div>
+
+                <div id="notesList" class="space-y-3 pb-6">
+                    <!-- Dynamic Notes -->
+                </div>
+            </section>
+
+            <!-- TAB 2: TIMER & STOPWATCH -->
+            <section id="tabTimer" class="tab-content hidden space-y-6">
+                <!-- Mode Switcher -->
+                <div class="flex bg-slate-900/90 p-1 rounded-2xl border border-slate-800">
+                    <button id="timerModeBtn" class="flex-1 py-2 text-xs font-semibold rounded-xl bg-cyan-500 text-white shadow transition-all">タイマー</button>
+                    <button id="stopwatchModeBtn" class="flex-1 py-2 text-xs font-semibold rounded-xl text-slate-400 hover:text-white transition-all">ストップウォッチ</button>
+                </div>
+
+                <!-- Timer View -->
+                <div id="timerView" class="space-y-6">
+                    <div class="flex flex-col items-center justify-center py-6">
+                        <div class="relative w-52 h-52 flex items-center justify-center">
+                            <!-- SVG Circular Progress -->
+                            <svg class="w-full h-full transform -rotate-90">
+                                <circle cx="104" cy="104" r="90" stroke="currentColor" stroke-width="8" class="text-slate-900" fill="transparent" />
+                                <circle id="timerProgressCircle" cx="104" cy="104" r="90" stroke="currentColor" stroke-width="8" class="text-cyan-500 transition-all duration-300" fill="transparent" stroke-dasharray="565" stroke-dashoffset="0" stroke-linecap="round" />
+                            </svg>
+                            <div class="absolute flex flex-col items-center">
+                                <span id="timerDisplay" class="font-mono text-3xl font-black text-white tracking-wider">03:00</span>
+                                <span id="timerStatusLabel" class="text-xs text-slate-400 mt-1">カスタムタイマー</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Preset Buttons -->
+                    <div class="grid grid-cols-4 gap-2">
+                        <button onclick="setTimerPreset(1)" class="py-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-semibold text-slate-300 transition-all">1分</button>
+                        <button onclick="setTimerPreset(3)" class="py-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-semibold text-slate-300 transition-all">3分</button>
+                        <button onclick="setTimerPreset(5)" class="py-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-semibold text-slate-300 transition-all">5分</button>
+                        <button onclick="setTimerPreset(10)" class="py-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-semibold text-slate-300 transition-all">10分</button>
+                    </div>
+
+                    <!-- Timer Controls -->
+                    <div class="flex space-x-3">
+                        <button id="timerToggleBtn" class="flex-grow py-3.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-2xl shadow-[0_4px_20px_rgba(6,182,212,0.4)] transition-all flex items-center justify-center space-x-2">
+                            <i class="fa-solid fa-play"></i>
+                            <span>スタート</span>
+                        </button>
+                        <button id="timerResetBtn" class="px-5 py-3.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 font-bold rounded-2xl transition-all">
+                            <i class="fa-solid fa-rotate-right"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Stopwatch View -->
+                <div id="stopwatchView" class="hidden space-y-6">
+                    <div class="flex flex-col items-center justify-center py-10">
+                        <span id="stopwatchDisplay" class="font-mono text-5xl font-black text-white tracking-wider">00:00.00</span>
+                        <span class="text-xs text-slate-400 mt-2">ストップウォッチ</span>
+                    </div>
+
+                    <div class="flex space-x-3">
+                        <button id="stopwatchToggleBtn" class="flex-grow py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-2xl shadow-[0_4px_20px_rgba(99,102,241,0.4)] transition-all flex items-center justify-center space-x-2">
+                            <i class="fa-solid fa-play"></i>
+                            <span>スタート</span>
+                        </button>
+                        <button id="stopwatchResetBtn" class="px-5 py-3.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 font-bold rounded-2xl transition-all">
+                            <i class="fa-solid fa-rotate-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 3: EXPENSE TRACKER -->
+            <section id="tabExpense" class="tab-content hidden space-y-4">
+                <!-- Summary Card -->
+                <div class="bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 rounded-2xl p-5 shadow-xl relative overflow-hidden">
+                    <div class="absolute -right-6 -bottom-6 w-28 h-28 bg-indigo-500/10 rounded-full blur-2xl"></div>
+                    <span class="text-xs text-slate-400 font-medium">本日の合計支出</span>
+                    <div class="flex items-baseline space-x-2 mt-1">
+                        <span id="totalExpenseDisplay" class="text-3xl font-bold font-mono text-indigo-400">¥0</span>
+                    </div>
+                </div>
+
+                <!-- Add Expense Form -->
+                <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 space-y-3">
+                    <div class="flex space-x-2">
+                        <input type="text" id="expenseDescInput" placeholder="使った内容 (例: ランチ)" class="flex-grow bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+                        <input type="number" id="expenseAmountInput" placeholder="金額 (¥)" class="w-28 bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <div class="flex justify-between items-center pt-1">
+                        <select id="expenseCategorySelect" class="bg-slate-950 border border-slate-800 text-xs text-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:border-indigo-500">
+                            <option value="食事">🍱 食事</option>
+                            <option value="カフェ">☕ カフェ</option>
+                            <option value="買い物">🛍️ 買い物</option>
+                            <option value="交通">🚃 交通</option>
+                            <option value="その他">💡 その他</option>
+                        </select>
+                        <button id="addExpenseBtn" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-5 py-2 rounded-xl text-xs shadow transition-all">追加する</button>
+                    </div>
+                </div>
+
+                <div class="flex justify-between items-center pt-2">
+                    <h2 class="text-xs font-semibold text-slate-400 tracking-wider uppercase">支出履歴</h2>
+                    <button id="clearExpensesBtn" class="text-xs text-rose-400 hover:underline">すべてクリア</button>
+                </div>
+
+                <div id="expenseList" class="space-y-2.5 pb-6">
+                    <!-- Dynamic Expenses -->
+                </div>
+            </section>
+
+            <!-- TAB 4: DECISION MAKER / PICKER -->
+            <section id="tabPicker" class="tab-content hidden space-y-5">
+                <div class="flex gap-2">
+                    <input type="text" id="pickerInput" placeholder="候補を追加 (例: ラーメン、寿司)..." class="flex-grow bg-slate-900/90 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 transition-colors">
+                    <button id="addPickerBtn" class="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-400 hover:to-pink-500 text-white font-semibold px-4 py-2.5 rounded-xl text-sm shadow transition-all">
+                        <i class="fa-solid fa-plus"></i>
+                    </button>
+                </div>
+
+                <!-- Result Display Box -->
+                <div class="bg-slate-900/90 border border-purple-500/30 rounded-2xl p-6 text-center shadow-[0_0_20px_rgba(168,85,247,0.15)] relative overflow-hidden">
+                    <div id="pickerResult" class="font-bold text-2xl text-purple-400 tracking-wide min-h-[40px] flex items-center justify-center">
+                        ボタンを押して抽選！
+                    </div>
+                    <button id="spinPickerBtn" class="mt-4 w-full py-3.5 bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-400 hover:to-pink-500 text-white font-bold rounded-xl shadow-[0_4px_15px_rgba(168,85,247,0.4)] active:scale-95 transition-all">
+                        <i class="fa-solid fa-dice mr-2"></i>ランダムに決める！
+                    </button>
+                </div>
+
+                <div class="flex justify-between items-center">
+                    <h2 class="text-xs font-semibold text-slate-400 tracking-wider uppercase">現在の選択肢リスト</h2>
+                    <span id="pickerCount" class="text-xs bg-slate-800 px-2 py-0.5 rounded-full text-slate-300">0件</span>
+                </div>
+
+                <div id="pickerList" class="flex flex-wrap gap-2 pb-6">
+                    <!-- Dynamic Tags -->
+                </div>
+            </section>
+
+        </main>
+
+        <!-- Bottom Navigation Bar -->
+        <nav class="absolute bottom-0 left-0 w-full bg-slate-950/95 border-t border-slate-800/80 backdrop-blur px-2 py-2 flex justify-around items-center z-20">
+            <button onclick="switchTab('notes')" id="navNotes" class="flex flex-col items-center justify-center w-16 py-1 text-cyan-400 transition-all">
+                <i class="fa-solid fa-note-sticky text-base mb-1"></i>
+                <span class="text-[10px] font-medium">メモ</span>
+            </button>
+            <button onclick="switchTab('timer')" id="navTimer" class="flex flex-col items-center justify-center w-16 py-1 text-slate-500 hover:text-slate-300 transition-all">
+                <i class="fa-solid fa-stopwatch text-base mb-1"></i>
+                <span class="text-[10px] font-medium">タイマー</span>
+            </button>
+            <button onclick="switchTab('expense')" id="navExpense" class="flex flex-col items-center justify-center w-16 py-1 text-slate-500 hover:text-slate-300 transition-all">
+                <i class="fa-solid fa-wallet text-base mb-1"></i>
+                <span class="text-[10px] font-medium">家計簿</span>
+            </button>
+            <button onclick="switchTab('picker')" id="navPicker" class="flex flex-col items-center justify-center w-16 py-1 text-slate-500 hover:text-slate-300 transition-all">
+                <i class="fa-solid fa-shuffle text-base mb-1"></i>
+                <span class="text-[10px] font-medium">ピッカー</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // --- TAB NAVIGATION ---
+        let currentTab = 'notes';
+        const titles = {
+            notes: 'クイックメモ',
+            timer: 'タイマー & ストップウォッチ',
+            expense: 'お小遣い・支出チェッカー',
+            picker: 'ランダム決定ピッカー'
+        };
+
+        function switchTab(tab) {
+            currentTab = tab;
+            document.getElementById('headerTitle').textContent = titles[tab];
+
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`tab${tab.charAt(0).toUpperCase() + tab.slice(1)}`).classList.remove('hidden');
+
+            // Reset nav colors
+            ['notes', 'timer', 'expense', 'picker'].forEach(t => {
+                const navBtn = document.getElementById(`nav${t.charAt(0).toUpperCase() + t.slice(1)}`);
+                if (t === tab) {
+                    navBtn.className = 'flex flex-col items-center justify-center w-16 py-1 text-cyan-400 transition-all';
+                } else {
+                    navBtn.className = 'flex flex-col items-center justify-center w-16 py-1 text-slate-500 hover:text-slate-300 transition-all';
+                }
+            });
+
+            // Header action customization
+            const headerAction = document.getElementById('headerAction');
+            headerAction.innerHTML = '';
+            if (tab === 'notes') {
+                headerAction.innerHTML = '<button onclick="clearAllNotes()" class="text-xs text-slate-400 hover:text-rose-400"><i class="fa-solid fa-trash-can"></i> 全削除</button>';
+            } else if (tab === 'picker') {
+                headerAction.innerHTML = '<button onclick="clearPickerItems()" class="text-xs text-slate-400 hover:text-rose-400"><i class="fa-solid fa-trash-can"></i> リセット</button>';
+            }
+        }
+
+        // --- 1. QUICK NOTES LOGIC ---
+        let notes = JSON.parse(localStorage.getItem('pt_notes')) || [
+            { id: 1, title: '買い物リスト', content: '牛乳、卵、食パン、コーヒー豆', date: '10/16 10:00' }
+        ];
+
+        const noteTitleInput = document.getElementById('noteTitleInput');
+        const noteContentInput = document.getElementById('noteContentInput');
+        const addNoteBtn = document.getElementById('addNoteBtn');
+        const notesList = document.getElementById('notesList');
+        const noteCharCount = document.getElementById('noteCharCount');
+        const noteCount = document.getElementById('noteCount');
+
+        noteContentInput.addEventListener('input', () => {
+            noteCharCount.textContent = `${noteContentInput.value.length} 文字`;
+        });
+
+        addNoteBtn.addEventListener('click', () => {
+            const title = noteTitleInput.value.trim();
+            const content = noteContentInput.value.trim();
+            if (!title && !content) return;
+
+            const now = new Date();
+            const dateStr = `${now.getMonth() + 1}/${now.getDate()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+            notes.unshift({
+                id: Date.now(),
+                title: title || '無題のメモ',
+                content: content,
+                date: dateStr
+            });
+
+            noteTitleInput.value = '';
+            noteContentInput.value = '';
+            noteCharCount.textContent = '0 文字';
+            saveAndRenderNotes();
+        });
+
+        function deleteNote(id) {
+            notes = notes.filter(n => n.id !== id);
+            saveAndRenderNotes();
+        }
+
+        function clearAllNotes() {
+            if (confirm('すべてのメモを削除しますか？')) {
+                notes = [];
+                saveAndRenderNotes();
+            }
+        }
+
+        function saveAndRenderNotes() {
+            localStorage.setItem('pt_notes', JSON.stringify(notes));
+            noteCount.textContent = `${notes.length}件`;
+            
+            if (notes.length === 0) {
+                notesList.innerHTML = '<div class="text-center py-10 text-slate-500 text-xs">メモがありません</div>';
+                return;
+            }
+
+            notesList.innerHTML = notes.map(n => `
+                <div class="bg-slate-900/90 border border-slate-800/80 rounded-2xl p-4 space-y-2 relative group">
+                    <div class="flex justify-between items-start">
+                        <h3 class="font-semibold text-sm text-white">${escapeHtml(n.title)}</h3>
+                        <button onclick="deleteNote(${n.id})" class="text-slate-500 hover:text-rose-400 text-xs transition-colors"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                    <p class="text-xs text-slate-300 whitespace-pre-wrap leading-relaxed">${escapeHtml(n.content)}</p>
+                    <div class="text-[10px] text-slate-500 text-right pt-1">${n.date}</div>
+                </div>
+            `).join('');
+        }
+        saveAndRenderNotes();
+
+
+        // --- 2. TIMER & STOPWATCH LOGIC ---
+        let isTimerMode = true;
+        let timerInterval = null;
+        let totalTimerSeconds = 180;
+        let remainingSeconds = 180;
+        let timerRunning = false;
+
+        let stopwatchInterval = null;
+        let stopwatchTime = 0;
+        let stopwatchRunning = false;
+
+        const timerModeBtn = document.getElementById('timerModeBtn');
+        const stopwatchModeBtn = document.getElementById('stopwatchModeBtn');
+        const timerView = document.getElementById('timerView');
+        const stopwatchView = document.getElementById('stopwatchView');
+        const timerDisplay = document.getElementById('timerDisplay');
+        const timerProgressCircle = document.getElementById('timerProgressCircle');
+        const timerToggleBtn = document.getElementById('timerToggleBtn');
+        const timerResetBtn = document.getElementById('timerResetBtn');
+
+        const stopwatchDisplay = document.getElementById('stopwatchDisplay');
+        const stopwatchToggleBtn = document.getElementById('stopwatchToggleBtn');
+        const stopwatchResetBtn = document.getElementById('stopwatchResetBtn');
+
+        timerModeBtn.addEventListener('click', () => {
+            isTimerMode = true;
+            timerModeBtn.className = 'flex-1 py-2 text-xs font-semibold rounded-xl bg-cyan-500 text-white shadow transition-all';
+            stopwatchModeBtn.className = 'flex-1 py-2 text-xs font-semibold rounded-xl text-slate-400 hover:text-white transition-all';
+            timerView.classList.remove('hidden');
+            stopwatchView.classList.add('hidden');
+        });
+
+        stopwatchModeBtn.addEventListener('click', () => {
+            isTimerMode = false;
+            stopwatchModeBtn.className = 'flex-1 py-2 text-xs font-semibold rounded-xl bg-indigo-600 text-white shadow transition-all';
+            timerModeBtn.className = 'flex-1 py-2 text-xs font-semibold rounded-xl text-slate-400 hover:text-white transition-all';
+            stopwatchView.classList.remove('hidden');
+            timerView.classList.add('hidden');
+        });
+
+        function setTimerPreset(minutes) {
+            clearInterval(timerInterval);
+            timerRunning = false;
+            totalTimerSeconds = minutes * 60;
+            remainingSeconds = totalTimerSeconds;
+            updateTimerDisplay();
+            timerToggleBtn.innerHTML = '<i class="fa-solid fa-play"></i><span>スタート</span>';
+        }
+
+        function updateTimerDisplay() {
+            const m = Math.floor(remainingSeconds / 60);
+            const s = remainingSeconds % 60;
+            timerDisplay.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+
+            // Circle progress calculation (Radius = 90, Circumference = 565)
+            const circumference = 565;
+            const offset = circumference - (remainingSeconds / totalTimerSeconds) * circumference;
+            timerProgressCircle.style.strokeDashoffset = offset;
+        }
+
+        timerToggleBtn.addEventListener('click', () => {
+            if (!timerRunning) {
+                if (remainingSeconds <= 0) remainingSeconds = totalTimerSeconds;
+                timerRunning = true;
+                timerToggleBtn.innerHTML = '<i class="fa-solid fa-pause"></i><span>一時停止</span>';
+                timerToggleBtn.className = 'flex-grow py-3.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-2xl shadow transition-all flex items-center justify-center space-x-2';
+                
+                timerInterval = setInterval(() => {
+                    if (remainingSeconds > 0) {
+                        remainingSeconds--;
+                        updateTimerDisplay();
+                    } else {
+                        clearInterval(timerInterval);
+                        timerRunning = false;
+                        timerToggleBtn.innerHTML = '<i class="fa-solid fa-play"></i><span>スタート</span>';
+                        timerToggleBtn.className = 'flex-grow py-3.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-2xl shadow transition-all flex items-center justify-center space-x-2';
+                        alert('タイマー終了です！');
+                    }
+                }, 1000);
+            } else {
+                clearInterval(timerInterval);
+                timerRunning = false;
+                timerToggleBtn.innerHTML = '<i class="fa-solid fa-play"></i><span>再開</span>';
+                timerToggleBtn.className = 'flex-grow py-3.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-2xl shadow transition-all flex items-center justify-center space-x-2';
+            }
+        });
+
+        timerResetBtn.addEventListener('click', () => {
+            clearInterval(timerInterval);
+            timerRunning = false;
+            remainingSeconds = totalTimerSeconds;
+            updateTimerDisplay();
+            timerToggleBtn.innerHTML = '<i class="fa-solid fa-play"></i><span>スタート</span>';
+            timerToggleBtn.className = 'flex-grow py-3.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-2xl shadow transition-all flex items-center justify-center space-x-2';
+        });
+
+        // Stopwatch logic
+        stopwatchToggleBtn.addEventListener('click', () => {
+            if (!stopwatchRunning) {
+                stopwatchRunning = true;
+                stopwatchToggleBtn.innerHTML = '<i class="fa-solid fa-pause"></i><span>一時停止</span>';
+                stopwatchToggleBtn.className = 'flex-grow py-3.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-2xl shadow transition-all flex items-center justify-center space-x-2';
+                
+                let startTime = Date.now() - stopwatchTime;
+                stopwatchInterval = setInterval(() => {
+                    stopwatchTime = Date.now() - startTime;
+                    let ms = Math.floor((stopwatchTime % 1000) / 10);
+                    let sec = Math.floor((stopwatchTime / 1000) % 60);
+                    let min = Math.floor(stopwatchTime / (1000 * 60));
+                    stopwatchDisplay.textContent = `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}.${String(ms).padStart(2, '0')}`;
+                }, 30);
+            } else {
+                clearInterval(stopwatchInterval);
+                stopwatchRunning = false;
+                stopwatchToggleBtn.innerHTML = '<i class="fa-solid fa-play"></i><span>再開</span>';
+                stopwatchToggleBtn.className = 'flex-grow py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-2xl shadow transition-all flex items-center justify-center space-x-2';
+            }
+        });
+
+        stopwatchResetBtn.addEventListener('click', () => {
+            clearInterval(stopwatchInterval);
+            stopwatchRunning = false;
+            stopwatchTime = 0;
+            stopwatchDisplay.textContent = '00:00.00';
+            stopwatchToggleBtn.innerHTML = '<i class="fa-solid fa-play"></i><span>スタート</span>';
+            stopwatchToggleBtn.className = 'flex-grow py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-2xl shadow transition-all flex items-center justify-center space-x-2';
+        });
+
+
+        // --- 3. EXPENSE TRACKER LOGIC ---
+        let expenses = JSON.parse(localStorage.getItem('pt_expenses')) || [
+            { id: 1, desc: 'コンビニコーヒー', amount: 160, category: 'カフェ', date: '10/16' }
+        ];
+
+        const expenseDescInput = document.getElementById('expenseDescInput');
+        const expenseAmountInput = document.getElementById('expenseAmountInput');
+        const expenseCategorySelect = document.getElementById('expenseCategorySelect');
+        const addExpenseBtn = document.getElementById('addExpenseBtn');
+        const expenseList = document.getElementById('expenseList');
+        const totalExpenseDisplay = document.getElementById('totalExpenseDisplay');
+        const clearExpensesBtn = document.getElementById('clearExpensesBtn');
+
+        addExpenseBtn.addEventListener('click', () => {
+            const desc = expenseDescInput.value.trim();
+            const amount = parseInt(expenseAmountInput.value);
+            const category = expenseCategorySelect.value;
+
+            if (!desc || isNaN(amount) || amount <= 0) return;
+
+            const now = new Date();
+            const dateStr = `${now.getMonth() + 1}/${now.getDate()}`;
+
+            expenses.unshift({
+                id: Date.now(),
+                desc: desc,
+                amount: amount,
+                category: category,
+                date: dateStr
+            });
+
+            expenseDescInput.value = '';
+            expenseAmountInput.value = '';
+            saveAndRenderExpenses();
+        });
+
+        function deleteExpense(id) {
+            expenses = expenses.filter(e => e.id !== id);
+            saveAndRenderExpenses();
+        }
+
+        clearExpensesBtn.addEventListener('click', () => {
+            if (confirm('支出履歴をすべてクリアしますか？')) {
+                expenses = [];
+                saveAndRenderExpenses();
+            }
+        });
+
+        function saveAndRenderExpenses() {
+            localStorage.setItem('pt_expenses', JSON.stringify(expenses));
+            
+            const total = expenses.reduce((sum, item) => sum + item.amount, 0);
+            totalExpenseDisplay.textContent = `¥${total.toLocaleString()}`;
+
+            if (expenses.length === 0) {
+                expenseList.innerHTML = '<div class="text-center py-8 text-slate-500 text-xs">支出データがありません</div>';
+                return;
+            }
+
+            expenseList.innerHTML = expenses.map(e => `
+                <div class="bg-slate-900/90 border border-slate-800/80 rounded-2xl p-3.5 flex justify-between items-center">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center text-xs text-indigo-400 font-bold">
+                            ${e.category.charAt(0)}
+                        </div>
+                        <div>
+                            <div class="font-semibold text-xs text-white">${escapeHtml(e.desc)}</div>
+                            <div class="text-[10px] text-slate-400">${e.category} ・ ${e.date}</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <span class="font-mono font-bold text-xs text-indigo-400">¥${e.amount.toLocaleString()}</span>
+                        <button onclick="deleteExpense(${e.id})" class="text-slate-500 hover:text-rose-400 text-xs"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                </div>
+            `).join('');
+        }
+        saveAndRenderExpenses();
+
+
+        // --- 4. DECISION MAKER / PICKER LOGIC ---
+        let pickerItems = JSON.parse(localStorage.getItem('pt_picker')) || ['ラーメン', '寿司', 'カレー', 'イタリアン', '焼肉'];
+
+        const pickerInput = document.getElementById('pickerInput');
+        const addPickerBtn = document.getElementById('addPickerBtn');
+        const pickerList = document.getElementById('pickerList');
+        const pickerResult = document.getElementById('pickerResult');
+        const spinPickerBtn = document.getElementById('spinPickerBtn');
+        const pickerCount = document.getElementById('pickerCount');
+
+        addPickerBtn.addEventListener('click', () => {
+            const val = pickerInput.value.trim();
+            if (!val || pickerItems.includes(val)) return;
+            pickerItems.push(val);
+            pickerInput.value = '';
+            saveAndRenderPicker();
+        });
+
+        function removePickerItem(item) {
+            pickerItems = pickerItems.filter(i => i !== item);
+            saveAndRenderPicker();
+        }
+
+        function clearPickerItems() {
+            pickerItems = [];
+            saveAndRenderPicker();
+            pickerResult.textContent = '選択肢を追加してください';
+        }
+
+        spinPickerBtn.addEventListener('click', () => {
+            if (pickerItems.length === 0) {
+                pickerResult.textContent = '選択肢を追加してください！';
+                return;
+            }
+
+            spinPickerBtn.disabled = true;
+            pickerResult.classList.add('animate-pulse');
+
+            let counter = 0;
+            const maxCount = 15;
+            const interval = setInterval(() => {
+                const randomItem = pickerItems[Math.floor(Math.random() * pickerItems.length)];
+                pickerResult.textContent = randomItem;
+                counter++;
+
+                if (counter >= maxCount) {
+                    clearInterval(interval);
+                    pickerResult.classList.remove('animate-pulse');
+                    spinPickerBtn.disabled = false;
+                }
+            }, 80);
+        });
+
+        function saveAndRenderPicker() {
+            localStorage.setItem('pt_picker', JSON.stringify(pickerItems));
+            pickerCount.textContent = `${pickerItems.length}件`;
+
+            if (pickerItems.length === 0) {
+                pickerList.innerHTML = '<div class="text-xs text-slate-500 py-2">選択肢がありません。上の入力欄から追加してください。</div>';
+                return;
+            }
+
+            pickerList.innerHTML = pickerItems.map(item => `
+                <div class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5 flex items-center space-x-2 text-xs">
+                    <span class="text-slate-200">${escapeHtml(item)}</span>
+                    <button onclick="removePickerItem('${item.replace(/'/g, "\\'")}')" class="text-slate-500 hover:text-rose-400"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+            `).join('');
+        }
+        saveAndRenderPicker();
+
+        // Utility HTML Escaper
+        function escapeHtml(str) {
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>
