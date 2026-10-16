@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Neon Cyber Runner</title>
+    <!-- Tailwind CSS for modern styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter & Press Start 2P for gaming vibe -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0b0f19;
+            color: #f3f4f6;
+            touch-action: manipulation;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .font-orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+        /* Custom smooth canvas sizing container */
+        .game-container {
+            width: 100%;
+            max-width: 480px;
+            height: 100dvh;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            background: linear-gradient(180deg, #0f172a 0%, #030712 100%);
+            box-shadow: 0 0 30px rgba(59, 130, 246, 0.2);
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center h-[100dvh] m-0">
+
+    <div class="game-container">
+        <!-- Header HUD -->
+        <div class="absolute top-0 left-0 w-full p-4 flex justify-between items-center z-20 pointer-events-none">
+            <div class="bg-slate-900/80 backdrop-blur border border-cyan-500/30 px-3 py-1.5 rounded-full flex items-center space-x-2">
+                <i class="fa-solid fa-trophy text-amber-400 text-xs"></i>
+                <span class="text-xs text-slate-400 font-orbitron">HI</span>
+                <span id="highScore" class="font-orbitron text-cyan-400 font-bold text-sm">0</span>
+            </div>
+            <div class="bg-slate-900/80 backdrop-blur border border-purple-500/30 px-4 py-1.5 rounded-full flex items-center space-x-2">
+                <span class="text-xs text-slate-400 font-orbitron">SCORE</span>
+                <span id="currentScore" class="font-orbitron text-purple-400 font-bold text-lg">0</span>
+            </div>
+        </div>
+
+        <!-- Game Canvas Screen -->
+        <div class="relative w-full flex-grow overflow-hidden">
+            <canvas id="gameCanvas"></canvas>
+
+            <!-- Start Screen Overlay -->
+            <div id="startScreen" class="absolute inset-0 bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-center p-6 z-30 text-center">
+                <div class="w-20 h-20 bg-cyan-500/10 rounded-3xl border border-cyan-400/40 flex items-center justify-center mb-6 shadow-[0_0_25px_rgba(6,182,212,0.3)] animate-pulse">
+                    <i class="fa-solid fa-bolt text-cyan-400 text-4xl"></i>
+                </div>
+                <h1 class="font-orbitron text-3xl font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-500 mb-2">
+                    NEON RUNNER
+                </h1>
+                <p class="text-slate-400 text-xs mb-8 max-w-[260px]">
+                    タップでジャンプ！ダブルタップで二段ジャンプ！障害物を華麗に避けてハイスコアを目指せ！
+                </p>
+                <button id="startButton" class="w-full max-w-[240px] py-4 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-orbitron font-bold rounded-2xl shadow-[0_4px_20px_rgba(6,182,212,0.4)] active:scale-95 transition-all flex items-center justify-center space-x-2 cursor-pointer">
+                    <i class="fa-solid fa-play"></i>
+                    <span>ゲームスタート</span>
+                </button>
+            </div>
+
+            <!-- Game Over Overlay -->
+            <div id="gameOverScreen" class="absolute inset-0 bg-slate-950/90 backdrop-blur-md hidden flex-col items-center justify-center p-6 z-30 text-center">
+                <div class="w-20 h-20 bg-rose-500/10 rounded-3xl border border-rose-500/40 flex items-center justify-center mb-4 shadow-[0_0_25px_rgba(244,63,94,0.3)]">
+                    <i class="fa-solid fa-skull text-rose-500 text-4xl"></i>
+                </div>
+                <h2 class="font-orbitron text-2xl font-black text-rose-500 mb-1">GAME OVER</h2>
+                <p class="text-slate-400 text-xs mb-6">サイバー空間からクラッシュしました</p>
+
+                <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 w-full max-w-[240px] mb-6 space-y-2">
+                    <div class="flex justify-between items-center text-xs text-slate-400">
+                        <span>スコア</span>
+                        <span id="finalScore" class="font-orbitron text-white font-bold text-base">0</span>
+                    </div>
+                    <div class="w-full h-[1px] bg-slate-800"></div>
+                    <div class="flex justify-between items-center text-xs text-slate-400">
+                        <span>ハイスコア</span>
+                        <span id="finalHighScore" class="font-orbitron text-cyan-400 font-bold text-base">0</span>
+                    </div>
+                </div>
+
+                <button id="restartButton" class="w-full max-w-[240px] py-4 bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-400 hover:to-pink-500 text-white font-orbitron font-bold rounded-2xl shadow-[0_4px_20px_rgba(168,85,247,0.4)] active:scale-95 transition-all flex items-center justify-center space-x-2 cursor-pointer">
+                    <i class="fa-solid fa-rotate-right"></i>
+                    <span>もう一度プレイ</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Touch Controls Bar -->
+        <div class="p-4 bg-slate-950/90 border-t border-slate-800/80 flex items-center justify-between z-20">
+            <div class="text-[11px] text-slate-400 flex items-center space-x-1.5">
+                <i class="fa-regular fa-hand-pointer text-cyan-400"></i>
+                <span>画面タップまたはボタンでジャンプ</span>
+            </div>
+            <button id="actionButton" class="bg-gradient-to-r from-cyan-500 to-blue-600 active:from-cyan-600 active:to-blue-700 text-white font-orbitron font-bold px-6 py-3 rounded-xl shadow-[0_0_15px_rgba(6,182,212,0.3)] active:scale-95 transition-all flex items-center space-x-2">
+                <i class="fa-solid fa-angles-up"></i>
+                <span>ジャンプ</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- JavaScript Game Logic -->
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // UI Elements
+        const startScreen = document.getElementById('startScreen');
+        const gameOverScreen = document.getElementById('gameOverScreen');
+        const startButton = document.getElementById('startButton');
+        const restartButton = document.getElementById('restartButton');
+        const actionButton = document.getElementById('actionButton');
+        const currentScoreEl = document.getElementById('currentScore');
+        const highScoreEl = document.getElementById('highScore');
+        const finalScoreEl = document.getElementById('finalScore');
+        const finalHighScoreEl = document.getElementById('finalHighScore');
+
+        // Game State
+        let gameState = 'START'; // START, PLAYING, GAMEOVER
+        let score = 0;
+        let highScore = localStorage.getItem('neon_runner_high_score') || 0;
+        highScoreEl.textContent = highScore;
+
+        let gameSpeed = 5;
+        let gravity = 0.6;
+        let floorHeight = 80;
+
+        // Player Object
+        let player = {
+            x: 50,
+            y: 0,
+            width: 32,
+            height: 48,
+            vy: 0,
+            jumpPower: -12,
+            doubleJumpPower: -10,
+            canDoubleJump: true,
+            isJumping: false,
+            glow: '#06b6d4'
+        };
+
+        // Obstacles & Particles Arrays
+        let obstacles = [];
+        let particles = [];
+        let stars = [];
+        let frameCount = 0;
+
+        // Resize Canvas dynamically
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            floorHeight = 90;
+            if (gameState === 'START') {
+                player.y = canvas.height - floorHeight - player.height;
+            }
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // Initialize Background Stars
+        function initStars() {
+            stars = [];
+            for (let i = 0; i < 40; i++) {
+                stars.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * (canvas.height - floorHeight),
+                    size: Math.random() * 2 + 1,
+                    speed: Math.random() * 0.5 + 0.2,
+                    alpha: Math.random() * 0.7 + 0.3
+                });
+            }
+        }
+        initStars();
+
+        // Spawn Obstacle Function
+        function spawnObstacle() {
+            const types = ['spike', 'drone', 'tall'];
+            const type = types[Math.floor(Math.random() * types.length)];
+            
+            let obs = {
+                x: canvas.width + 50,
+                width: 30,
+                height: 40,
+                type: type,
+                color: '#f43f5e'
+            };
+
+            if (type === 'spike') {
+                obs.width = 32;
+                obs.height = 36;
+                obs.y = canvas.height - floorHeight - obs.height;
+            } else if (type === 'drone') {
+                obs.width = 36;
+                obs.height = 28;
+                obs.y = canvas.height - floorHeight - 90 - Math.random() * 40;
+                obs.color = '#a855f7';
+            } else if (type === 'tall') {
+                obs.width = 28;
+                obs.height = 70;
+                obs.y = canvas.height - floorHeight - obs.height;
+                obs.color = '#ec4899';
+            }
+
+            obstacles.push(obs);
+        }
+
+        // Particle System for jump/trail effects
+        function createParticles(x, y, color) {
+            for (let i = 0; i < 6; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 4,
+                    vy: (Math.random() - 0.5) * 4,
+                    size: Math.random() * 3 + 1,
+                    alpha: 1,
+                    color: color
+                });
+            }
+        }
+
+        // Jump Logic
+        function triggerJump() {
+            if (gameState !== 'PLAYING') return;
+
+            if (!player.isJumping) {
+                player.vy = player.jumpPower;
+                player.isJumping = true;
+                player.canDoubleJump = true;
+                createParticles(player.x + player.width / 2, player.y + player.height, '#06b6d4');
+            } else if (player.canDoubleJump) {
+                player.vy = player.doubleJumpPower;
+                player.canDoubleJump = false;
+                createParticles(player.x + player.width / 2, player.y + player.height / 2, '#a855f7');
+            }
+        }
+
+        // Event Listeners for Controls
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' || e.code === 'ArrowUp') {
+                e.preventDefault();
+                triggerJump();
+            }
+        });
+
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            triggerJump();
+        }, { passive: false });
+
+        actionButton.addEventListener('click', (e) => {
+            e.preventDefault();
+            triggerJump();
+        });
+
+        startButton.addEventListener('click', startGame);
+        restartButton.addEventListener('click', startGame);
+
+        function startGame() {
+            gameState = 'PLAYING';
+            score = 0;
+            gameSpeed = 5;
+            obstacles = [];
+            particles = [];
+            frameCount = 0;
+            player.y = canvas.height - floorHeight - player.height;
+            player.vy = 0;
+            player.isJumping = false;
+            
+            startScreen.classList.add('hidden');
+            gameOverScreen.classList.add('hidden');
+            gameOverScreen.classList.remove('flex');
+        }
+
+        function gameOver() {
+            gameState = 'GAMEOVER';
+            if (score > highScore) {
+                highScore = Math.floor(score);
+                localStorage.setItem('neon_runner_high_score', highScore);
+                highScoreEl.textContent = highScore;
+            }
+            finalScoreEl.textContent = Math.floor(score);
+            finalHighScoreEl.textContent = highScore;
+            gameOverScreen.classList.remove('hidden');
+            gameOverScreen.classList.add('flex');
+        }
+
+        // Main Game Loop
+        function update() {
+            if (gameState !== 'PLAYING') return;
+
+            frameCount++;
+            score += 0.1;
+            currentScoreEl.textContent = Math.floor(score);
+
+            // Gradually increase speed
+            gameSpeed = 5 + Math.floor(score / 100) * 0.5;
+            if (gameSpeed > 11) gameSpeed = 11;
+
+            // Player Physics
+            player.vy += gravity;
+            player.y += player.vy;
+
+            const groundLevel = canvas.height - floorHeight - player.height;
+            if (player.y >= groundLevel) {
+                player.y = groundLevel;
+                player.vy = 0;
+                player.isJumping = false;
+                player.canDoubleJump = true;
+            }
+
+            // Spawn Obstacles periodically
+            let spawnInterval = Math.max(70, 120 - Math.floor(score / 50) * 5);
+            if (frameCount % spawnInterval === 0) {
+                spawnObstacle();
+            }
+
+            // Update Obstacles
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                let obs = obstacles[i];
+                obs.x -= gameSpeed;
+
+                // Collision Detection (AABB with slight padding for fairness)
+                let padding = 6;
+                if (
+                    player.x + padding < obs.x + obs.width - padding &&
+                    player.x + player.width - padding > obs.x + padding &&
+                    player.y + padding < obs.y + obs.height - padding &&
+                    player.y + player.height - padding > obs.y + padding
+                ) {
+                    gameOver();
+                }
+
+                // Remove off-screen obstacles
+                if (obs.x + obs.width < 0) {
+                    obstacles.splice(i, 1);
+                }
+            }
+
+            // Update Particles
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.x += p.vx - gameSpeed * 0.5;
+                p.y += p.vy;
+                p.alpha -= 0.03;
+                if (p.alpha <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+
+            // Update Stars
+            for (let star of stars) {
+                star.x -= star.speed * (gameSpeed * 0.3);
+                if (star.x < 0) star.x = canvas.width;
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 1. Draw Starfield Background
+            for (let star of stars) {
+                ctx.fillStyle = `rgba(255, 255, 255, ${star.alpha})`;
+                ctx.fillRect(star.x, star.y, star.size, star.size);
+            }
+
+            // 2. Draw Grid Lines on Floor
+            const gridOffset = (frameCount * gameSpeed) % 40;
+            ctx.strokeStyle = 'rgba(6, 182, 212, 0.15)';
+            ctx.lineWidth = 1;
+
+            for (let x = -gridOffset; x < canvas.width; x += 40) {
+                ctx.beginPath();
+                ctx.moveTo(x, canvas.height - floorHeight);
+                ctx.lineTo(x - 50, canvas.height);
+                ctx.stroke();
+            }
+
+            // Floor top neon line
+            ctx.strokeStyle = '#06b6d4';
+            ctx.shadowColor = '#06b6d4';
+            ctx.shadowBlur = 10;
+            ctx.beginPath();
+            ctx.moveTo(0, canvas.height - floorHeight);
+            ctx.lineTo(canvas.width, canvas.height - floorHeight);
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+
+            // Floor solid fill
+            ctx.fillStyle = '#030712';
+            ctx.fillRect(0, canvas.height - floorHeight + 1, canvas.width, floorHeight);
+
+            // 3. Draw Particles
+            for (let p of particles) {
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = p.alpha;
+                ctx.shadowColor = p.color;
+                ctx.shadowBlur = 8;
+                ctx.fillRect(p.x, p.y, p.size, p.size);
+            }
+            ctx.globalAlpha = 1.0;
+            ctx.shadowBlur = 0;
+
+            // 4. Draw Obstacles
+            for (let obs of obstacles) {
+                ctx.fillStyle = obs.color;
+                ctx.shadowColor = obs.color;
+                ctx.shadowBlur = 12;
+
+                if (obs.type === 'spike') {
+                    // Draw Triangle Spike
+                    ctx.beginPath();
+                    ctx.moveTo(obs.x + obs.width / 2, obs.y);
+                    ctx.lineTo(obs.x + obs.width, obs.y + obs.height);
+                    ctx.lineTo(obs.x, obs.y + obs.height);
+                    ctx.closePath();
+                    ctx.fill();
+                } else if (obs.type === 'drone') {
+                    // Draw Floating Drone
+                    ctx.roundRect(obs.x, obs.y, obs.width, obs.height, 6);
+                    ctx.fill();
+                    // Drone eye
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(obs.x + 8, obs.y + 8, 8, 8);
+                } else {
+                    // Draw Tall Obstacle / Wall
+                    ctx.roundRect(obs.x, obs.y, obs.width, obs.height, 4);
+                    ctx.fill();
+                    // Inner neon detail
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(obs.x + obs.width / 2 - 2, obs.y + 10, 4, obs.height - 20);
+                }
+                ctx.shadowBlur = 0;
+            }
+
+            // 5. Draw Player Character (Cyber Runner)
+            ctx.fillStyle = '#06b6d4';
+            ctx.shadowColor = '#06b6d4';
+            ctx.shadowBlur = 15;
+            
+            // Body
+            ctx.roundRect(player.x, player.y, player.width, player.height, 8);
+            ctx.fill();
+
+            // Visor / Face detail
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(player.x + 16, player.y + 10, 10, 6);
+
+            // Jetpack flame effect when jumping
+            if (player.isJumping) {
+                ctx.fillStyle = '#a855f7';
+                ctx.shadowColor = '#a855f7';
+                ctx.fillRect(player.x - 6, player.y + player.height - 14, 6, 10);
+            }
+
+            ctx.shadowBlur = 0;
+        }
+
+        function loop() {
+            update();
+            draw();
+            requestAnimationFrame(loop);
+        }
+
+        // Start loop animation
+        requestAnimationFrame(loop);
+    </script>
+</body>
+</html>
