@@ -1,0 +1,1241 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>サイバー・ストライカー - 3D FPS</title>
+    <!-- Tailwind CSS for UI layout -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js for 3D graphics -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: #050508;
+            color: #fff;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* HUD & Overlay Canvas */
+        #hud-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        /* Virtual Joystick Base & Knob */
+        .joystick-zone {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            width: 140px;
+            height: 140px;
+            background: rgba(0, 240, 255, 0.08);
+            border: 2px solid rgba(0, 240, 255, 0.4);
+            border-radius: 50%;
+            touch-action: none;
+            z-index: 20;
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.2);
+        }
+
+        .joystick-knob {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 50px;
+            height: 50px;
+            background: radial-gradient(circle, rgba(0,240,255,0.9) 0%, rgba(0,120,255,0.6) 100%);
+            border: 2px solid #00f0ff;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            box-shadow: 0 0 10px #00f0ff;
+        }
+
+        /* Touch look area (Right Side) */
+        #touch-look-zone {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 60vw;
+            height: 100vh;
+            z-index: 15;
+            touch-action: none;
+        }
+
+        /* Buttons Container */
+        .action-buttons {
+            position: absolute;
+            bottom: 25px;
+            right: 25px;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            z-index: 25;
+            touch-action: none;
+        }
+
+        .btn-action {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            color: #fff;
+            font-weight: bold;
+            backdrop-filter: blur(4px);
+            transition: transform 0.05s, background-color 0.15s;
+            box-shadow: 0 0 15px rgba(0,0,0,0.5);
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .btn-action:active {
+            transform: scale(0.92);
+        }
+
+        .btn-fire {
+            width: 80px;
+            height: 80px;
+            background: radial-gradient(circle, rgba(255, 0, 85, 0.8) 0%, rgba(180, 0, 50, 0.6) 100%);
+            border: 2px solid #ff0055;
+            box-shadow: 0 0 15px rgba(255, 0, 85, 0.5);
+            grid-column: 2;
+            grid-row: 1 / span 2;
+            font-size: 1.5rem;
+        }
+
+        .btn-reload {
+            width: 55px;
+            height: 55px;
+            background: rgba(255, 170, 0, 0.25);
+            border: 2px solid #ffaa00;
+            color: #ffaa00;
+            font-size: 1.1rem;
+        }
+
+        .btn-assist {
+            width: 55px;
+            height: 55px;
+            background: rgba(0, 240, 255, 0.25);
+            border: 2px solid #00f0ff;
+            color: #00f0ff;
+            font-size: 1.1rem;
+        }
+
+        .btn-assist.active {
+            background: rgba(0, 240, 255, 0.7);
+            color: #000;
+            box-shadow: 0 0 15px #00f0ff;
+        }
+
+        /* Screen Flash / Damage Overlay */
+        #damage-flash {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle, transparent 60%, rgba(255, 0, 50, 0.5) 100%);
+            opacity: 0;
+            pointer-events: none;
+            z-index: 12;
+            transition: opacity 0.1s ease-out;
+        }
+
+        /* Scanline Filter Effect */
+        .scanlines {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 11;
+            opacity: 0.6;
+        }
+
+        /* Neon Glow Text */
+        .neon-text-blue {
+            text-shadow: 0 0 8px #00f0ff, 0 0 15px #00f0ff;
+        }
+        .neon-text-pink {
+            text-shadow: 0 0 8px #ff0055, 0 0 15px #ff0055;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <!-- Canvas Containers dynamically inserted by JS -->
+        <canvas id="hud-canvas"></canvas>
+        <div class="scanlines"></div>
+        <div id="damage-flash"></div>
+
+        <!-- Touch Look Region for Aiming -->
+        <div id="touch-look-zone"></div>
+
+        <!-- Mobile Controls -->
+        <div id="joystick-container" class="joystick-zone">
+            <div id="joystick-knob" class="joystick-knob"></div>
+        </div>
+
+        <div class="action-buttons">
+            <button id="btn-assist" class="btn-action btn-assist active" title="エイムアシスト切替">
+                <i class="fa-solid fa-crosshairs"></i>
+            </button>
+            <button id="btn-reload" class="btn-action btn-reload" title="リロード">
+                <i class="fa-solid fa-rotate-right"></i>
+            </button>
+            <button id="btn-fire" class="btn-action btn-fire" title="射撃">
+                <i class="fa-solid fa-burst"></i>
+            </button>
+        </div>
+
+        <!-- UI Overlays (Start / Pause / Game Over) -->
+        <div id="ui-overlay" class="absolute inset-0 z-30 flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+            <!-- Start Screen -->
+            <div id="start-screen" class="text-center max-w-md w-full bg-slate-900/90 border-2 border-cyan-500/50 p-6 rounded-2xl shadow-[0_0_30px_rgba(0,240,255,0.3)]">
+                <h1 class="text-4xl font-extrabold text-cyan-400 mb-2 neon-text-blue tracking-wider">CYBER STRIKER</h1>
+                <p class="text-xs text-pink-500 font-mono mb-6 tracking-widest uppercase">ネオン・シューティング・シミュレーター</p>
+
+                <div class="space-y-3 mb-6 text-left text-sm bg-slate-800/60 p-4 rounded-xl border border-slate-700">
+                    <div class="flex items-center gap-3">
+                        <i class="fa-solid fa-gamepad text-cyan-400 text-lg"></i>
+                        <span>左操作: 移動 / 右画面: エイム</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <i class="fa-solid fa-bullseye text-pink-500 text-lg"></i>
+                        <span>右下の巨大ボタンで射撃</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <i class="fa-solid fa-wand-magic-sparkles text-amber-400 text-lg"></i>
+                        <span>エイムアシスト機能付き</span>
+                    </div>
+                </div>
+
+                <div class="mb-6 flex justify-around text-center border-y border-slate-800 py-3">
+                    <div>
+                        <div class="text-xs text-slate-400">最高スコア</div>
+                        <div id="start-high-score" class="text-xl font-bold text-amber-400">0</div>
+                    </div>
+                    <div>
+                        <div class="text-xs text-slate-400">制限時間</div>
+                        <div class="text-xl font-bold text-cyan-400">60秒</div>
+                    </div>
+                </div>
+
+                <button id="start-btn" class="w-full py-4 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black font-black text-xl rounded-xl shadow-[0_0_20px_rgba(0,240,255,0.6)] transition active:scale-95">
+                    ミッション開始
+                </button>
+            </div>
+
+            <!-- Game Over Screen -->
+            <div id="gameover-screen" class="hidden text-center max-w-md w-full bg-slate-900/90 border-2 border-pink-500/50 p-6 rounded-2xl shadow-[0_0_30px_rgba(255,0,85,0.3)]">
+                <h2 class="text-3xl font-extrabold text-pink-500 mb-1 neon-text-pink">ミッション終了</h2>
+                <p id="gameover-reason" class="text-xs text-slate-400 mb-6">タイムアップ！</p>
+
+                <div class="bg-slate-800/80 p-4 rounded-xl border border-slate-700 space-y-3 mb-6">
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-400 text-sm">最終スコア:</span>
+                        <span id="final-score" class="text-2xl font-black text-cyan-400">0</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-400 text-sm">最大コンボ:</span>
+                        <span id="final-combo" class="text-xl font-bold text-pink-400">0x</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-400 text-sm">命中率:</span>
+                        <span id="final-accuracy" class="text-xl font-bold text-amber-400">0%</span>
+                    </div>
+                    <div class="flex justify-between items-center pt-2 border-t border-slate-700">
+                        <span class="text-slate-300 text-sm font-bold">ハイスコア:</span>
+                        <span id="end-high-score" class="text-xl font-black text-amber-300">0</span>
+                    </div>
+                </div>
+
+                <button id="restart-btn" class="w-full py-4 bg-gradient-to-r from-pink-500 to-rose-600 hover:from-pink-400 hover:to-rose-500 text-white font-black text-xl rounded-xl shadow-[0_0_20px_rgba(255,0,85,0.6)] transition active:scale-95">
+                    再挑戦
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * サイバーパンク 3D FPS ゲーム Engine
+         * HTML5, Three.js, Web Audio API
+         */
+
+        // --- ゲーム状態管理 ---
+        const GAME_STATE = {
+            MENU: 0,
+            PLAYING: 1,
+            GAMEOVER: 2
+        };
+
+        let currentState = GAME_STATE.MENU;
+        let score = 0;
+        let combo = 0;
+        let maxCombo = 0;
+        let health = 100;
+        let timeLeft = 60;
+        let ammo = 12;
+        const maxAmmo = 12;
+        let isReloading = false;
+        let totalShots = 0;
+        let totalHits = 0;
+        let highScore = localStorage.getItem('cyber_fps_highscore') || 0;
+        let aimAssistEnabled = true;
+
+        // --- Web Audio API (効果音合成) ---
+        class SoundFX {
+            constructor() {
+                this.ctx = null;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+
+            playShoot() {
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+                
+                // ノイズ生成（発砲音）
+                const bufferSize = this.ctx.sampleRate * 0.1;
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+
+                const noise = this.ctx.createBufferSource();
+                noise.buffer = buffer;
+
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'bandpass';
+                filter.frequency.setValueAtTime(1000, now);
+                filter.frequency.exponentialRampToValueAtTime(100, now + 0.08);
+
+                const gain = this.ctx.createGain();
+                gain.gain.setValueAtTime(0.5, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.09);
+
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                // レーザー風トーン
+                const osc = this.ctx.createOscillator();
+                const oscGain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(800, now);
+                osc.frequency.exponentialRampToValueAtTime(80, now + 0.1);
+                
+                oscGain.gain.setValueAtTime(0.3, now);
+                oscGain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+
+                osc.connect(oscGain);
+                oscGain.connect(this.ctx.destination);
+
+                noise.start(now);
+                osc.start(now);
+            }
+
+            playHit() {
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(1200, now);
+                osc.frequency.exponentialRampToValueAtTime(400, now + 0.05);
+
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+            }
+
+            playExplosion() {
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+                const bufferSize = this.ctx.sampleRate * 0.3;
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+
+                const noise = this.ctx.createBufferSource();
+                noise.buffer = buffer;
+
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(800, now);
+                filter.frequency.linearRampToValueAtTime(50, now + 0.3);
+
+                const gain = this.ctx.createGain();
+                gain.gain.setValueAtTime(0.7, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.ctx.destination);
+                noise.start(now);
+            }
+
+            playReload() {
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(300, now);
+                osc.frequency.linearRampToValueAtTime(600, now + 0.15);
+
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+            }
+
+            playHurt() {
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(150, now);
+                osc.frequency.linearRampToValueAtTime(60, now + 0.2);
+
+                gain.gain.setValueAtTime(0.5, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+            }
+        }
+
+        const soundFX = new SoundFX();
+
+        // --- Three.js 3D ワールド設定 ---
+        let scene, camera, renderer;
+        let playerGroup;
+        let gunMesh, muzzleFlashLight;
+        let targets = [];
+        let particles = [];
+        let clock = new THREE.Clock();
+
+        // カメラ回転制御 (Yaw & Pitch)
+        let cameraYaw = 0;
+        let cameraPitch = 0;
+        const maxPitch = Math.PI / 2.2;
+
+        // レティクルの反動（拡がり）
+        let recoilSpread = 0;
+
+        function init3D() {
+            const container = document.getElementById('game-container');
+
+            // シーン
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x05050d, 0.02);
+
+            // カメラ & プレイヤーグループ
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            playerGroup = new THREE.Group();
+            playerGroup.position.set(0, 1.6, 0); // 目線の高さ
+            playerGroup.add(camera);
+            scene.add(playerGroup);
+
+            // レンダラー
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            container.insertBefore(renderer.domElement, container.firstChild);
+
+            // ライティング
+            const ambientLight = new THREE.AmbientLight(0x222233, 1.5);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0x00f0ff, 1.0);
+            dirLight.position.set(20, 40, 20);
+            scene.add(dirLight);
+
+            // ステージ（グリッドフロア & サイバーパンク建築物）
+            createEnvironment();
+
+            // 銃モデルの作成（カメラの子としてアタッチ）
+            createGun();
+
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        // 環境（マップ）作成
+        function createEnvironment() {
+            // 床
+            const floorGeo = new THREE.PlaneGeometry(100, 100);
+            const floorMat = new THREE.MeshStandardMaterial({ 
+                color: 0x0a0a12, 
+                roughness: 0.2, 
+                metalness: 0.8 
+            });
+            const floor = new THREE.Mesh(floorGeo, floorMat);
+            floor.rotation.x = -Math.PI / 2;
+            scene.add(floor);
+
+            // 床のネオングリッド線
+            const grid = new THREE.GridHelper(100, 50, 0xff0055, 0x00f0ff);
+            grid.position.y = 0.01;
+            scene.add(grid);
+
+            // 周囲のサイバータワー
+            const towerGeo = new THREE.BoxGeometry(4, 30, 4);
+            for (let i = 0; i < 24; i++) {
+                const angle = (i / 24) * Math.PI * 2;
+                const radius = 35 + Math.random() * 10;
+                const x = Math.cos(angle) * radius;
+                const z = Math.sin(angle) * radius;
+
+                const towerMat = new THREE.MeshStandardMaterial({
+                    color: 0x101020,
+                    roughness: 0.3,
+                    metalness: 0.9,
+                    emissive: (i % 2 === 0) ? 0x00f0ff : 0xff0055,
+                    emissiveIntensity: 0.15
+                });
+
+                const tower = new THREE.Mesh(towerGeo, towerMat);
+                tower.position.set(x, 15, z);
+                scene.add(tower);
+            }
+        }
+
+        // 武器のメッシュ作成
+        function createGun() {
+            const gunGroup = new THREE.Group();
+
+            // 銃身
+            const bodyGeo = new THREE.BoxGeometry(0.1, 0.15, 0.5);
+            const gunMat = new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.9, roughness: 0.1 });
+            const body = new THREE.Mesh(bodyGeo, gunMat);
+
+            // ネオンライン
+            const lineGeo = new THREE.BoxGeometry(0.105, 0.02, 0.4);
+            const lineMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
+            const line = new THREE.Mesh(lineGeo, lineMat);
+            line.position.y = 0.05;
+
+            // 銃口
+            const barrelGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.2);
+            barrelGeo.rotateX(Math.PI / 2);
+            const barrel = new THREE.Mesh(barrelGeo, gunMat);
+            barrel.position.set(0, 0.02, -0.3);
+
+            gunGroup.add(body, line, barrel);
+            gunGroup.position.set(0.2, -0.2, -0.4); // 右下に配置
+            camera.add(gunGroup);
+            gunMesh = gunGroup;
+
+            // マズルフラッシュライト
+            muzzleFlashLight = new THREE.PointLight(0x00f0ff, 0, 5);
+            muzzleFlashLight.position.set(0.2, -0.18, -0.6);
+            camera.add(muzzleFlashLight);
+        }
+
+        // --- ターゲット (敵ドローン) スポーンシステム ---
+        const TARGET_TYPES = {
+            BASIC: { hp: 1, pts: 100, color: 0x00f0ff, speed: 1.5, scale: 0.8 },
+            FAST:  { hp: 1, pts: 250, color: 0xff0055, speed: 3.5, scale: 0.5 },
+            HEAVY: { hp: 3, pts: 500, color: 0xaa00ff, speed: 0.8, scale: 1.2 },
+            GOLD:  { hp: 1, pts: 1000, color: 0xffcc00, speed: 4.5, scale: 0.4 }
+        };
+
+        function spawnTarget() {
+            if (targets.length >= 12 || currentState !== GAME_STATE.PLAYING) return;
+
+            // 出現確率判定
+            const rand = Math.random();
+            let type = TARGET_TYPES.BASIC;
+            if (rand > 0.92) type = TARGET_TYPES.GOLD;
+            else if (rand > 0.75) type = TARGET_TYPES.HEAVY;
+            else if (rand > 0.5) type = TARGET_TYPES.FAST;
+
+            const group = new THREE.Group();
+
+            // コア球体
+            const coreGeo = new THREE.SphereGeometry(0.5 * type.scale, 16, 16);
+            const coreMat = new THREE.MeshStandardMaterial({
+                color: type.color,
+                emissive: type.color,
+                emissiveIntensity: 0.8,
+                roughness: 0.2
+            });
+            const core = new THREE.Mesh(coreGeo, coreMat);
+            group.add(core);
+
+            // 外枠リング
+            const ringGeo = new THREE.TorusGeometry(0.7 * type.scale, 0.05 * type.scale, 8, 24);
+            const ringMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            const ring = new THREE.Mesh(ringGeo, ringMat);
+            group.add(ring);
+
+            // スポーン位置 (プレイヤーの周囲 半円状)
+            const angle = (Math.random() - 0.5) * Math.PI * 1.2; // 視野角周辺
+            const dist = 12 + Math.random() * 15;
+            const height = 1 + Math.random() * 5;
+
+            group.position.set(
+                playerGroup.position.x + Math.sin(angle) * dist,
+                height,
+                playerGroup.position.z - Math.cos(angle) * dist
+            );
+
+            // パラメータ付与
+            group.userData = {
+                type: type,
+                hp: type.hp,
+                maxHp: type.hp,
+                speed: type.speed,
+                ring: ring,
+                baseY: height,
+                timeOffset: Math.random() * 100,
+                isAttacking: false
+            };
+
+            scene.add(group);
+            targets.push(group);
+        }
+
+        // ターゲット更新処理
+        function updateTargets(delta) {
+            for (let i = targets.length - 1; i >= 0; i--) {
+                const t = targets[i];
+                const ud = t.userData;
+
+                // 浮遊モーション
+                ud.timeOffset += delta * ud.speed;
+                t.position.y = ud.baseY + Math.sin(ud.timeOffset) * 0.5;
+                ud.ring.rotation.x += delta * 2;
+                ud.ring.rotation.y += delta * 3;
+
+                // プレイヤーへ接近攻撃（徐々に近づく）
+                const dir = new THREE.Vector3().subVectors(playerGroup.position, t.position);
+                dir.y = 0; // 水平移動
+                if (dir.length() > 2) {
+                    dir.normalize();
+                    t.position.addScaledVector(dir, delta * (ud.speed * 0.5));
+                } else {
+                    // 攻撃判定（接近されたらダメージ）
+                    damagePlayer(15);
+                    createExplosion(t.position, ud.type.color);
+                    scene.remove(t);
+                    targets.splice(i, 1);
+                    continue;
+                }
+            }
+        }
+
+        // 爆発パーティクルエフェクト
+        function createExplosion(pos, colorHex) {
+            soundFX.playExplosion();
+            const count = 15;
+            for (let i = 0; i < count; i++) {
+                const pGeo = new THREE.BoxGeometry(0.1, 0.1, 0.1);
+                const pMat = new THREE.MeshBasicMaterial({ color: colorHex });
+                const p = new THREE.Mesh(pGeo, pMat);
+                p.position.copy(pos);
+
+                const velocity = new THREE.Vector3(
+                    (Math.random() - 0.5) * 8,
+                    (Math.random() - 0.5) * 8,
+                    (Math.random() - 0.5) * 8
+                );
+
+                scene.add(p);
+                particles.push({ mesh: p, vel: velocity, life: 0.4 });
+            }
+        }
+
+        function updateParticles(delta) {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.life -= delta;
+                p.mesh.position.addScaledVector(p.vel, delta);
+                p.mesh.scale.multiplyScalar(0.92);
+
+                if (p.life <= 0) {
+                    scene.remove(p.mesh);
+                    particles.splice(i, 1);
+                }
+            }
+        }
+
+        // --- タッチ & ジョイスティック操作 logic ---
+        const joystickContainer = document.getElementById('joystick-container');
+        const joystickKnob = document.getElementById('joystick-knob');
+        const touchLookZone = document.getElementById('touch-look-zone');
+
+        let joystickActive = false;
+        let joystickTouchId = null;
+        let joystickMove = { x: 0, y: 0 };
+
+        let lookTouchId = null;
+        let lastLookPos = { x: 0, y: 0 };
+
+        // 仮想ジョイスティック設定
+        joystickContainer.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.changedTouches[0];
+            joystickActive = true;
+            joystickTouchId = touch.identifier;
+            updateJoystick(touch);
+        }, { passive: false });
+
+        window.addEventListener('touchmove', (e) => {
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                const touch = e.changedTouches[i];
+                if (touch.identifier === joystickTouchId) {
+                    updateJoystick(touch);
+                } else if (touch.identifier === lookTouchId) {
+                    handleLookMove(touch);
+                }
+            }
+        }, { passive: false });
+
+        window.addEventListener('touchend', (e) => {
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                const touch = e.changedTouches[i];
+                if (touch.identifier === joystickTouchId) {
+                    joystickActive = false;
+                    joystickTouchId = null;
+                    joystickMove = { x: 0, y: 0 };
+                    joystickKnob.style.transform = `translate(-50%, -50%)`;
+                } else if (touch.identifier === lookTouchId) {
+                    lookTouchId = null;
+                }
+            }
+        });
+
+        function updateJoystick(touch) {
+            const rect = joystickContainer.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+
+            let dx = touch.clientX - centerX;
+            let dy = touch.clientY - centerY;
+            const maxRadius = rect.width / 2;
+            const dist = Math.hypot(dx, dy);
+
+            if (dist > maxRadius) {
+                dx = (dx / dist) * maxRadius;
+                dy = (dy / dist) * maxRadius;
+            }
+
+            joystickKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+            // 正規化入力 (-1.0 ~ 1.0)
+            joystickMove.x = dx / maxRadius;
+            joystickMove.y = dy / maxRadius;
+        }
+
+        // 画面右ドラッグ視点移動
+        touchLookZone.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (lookTouchId === null) {
+                const touch = e.changedTouches[0];
+                lookTouchId = touch.identifier;
+                lastLookPos = { x: touch.clientX, y: touch.clientY };
+            }
+        }, { passive: false });
+
+        function handleLookMove(touch) {
+            const dx = touch.clientX - lastLookPos.x;
+            const dy = touch.clientY - lastLookPos.y;
+
+            const sensitivity = 0.0035;
+            cameraYaw -= dx * sensitivity;
+            cameraPitch -= dy * sensitivity;
+            cameraPitch = Math.max(-maxPitch, Math.min(maxPitch, cameraPitch));
+
+            lastLookPos = { x: touch.clientX, y: touch.clientY };
+        }
+
+        // キーボード操作（PCテスト用デバッグサポート）
+        const keys = {};
+        window.addEventListener('keydown', (e) => keys[e.code] = true);
+        window.addEventListener('keyup', (e) => keys[e.code] = false);
+
+        // プレイヤーの移動ロジック
+        function updatePlayerMovement(delta) {
+            const speed = 7.0;
+            const moveVector = new THREE.Vector3();
+
+            // ジョイスティック入力
+            if (joystickActive) {
+                moveVector.x = joystickMove.x;
+                moveVector.z = joystickMove.y;
+            }
+
+            // PC WASDサポート
+            if (keys['KeyW']) moveVector.z = -1;
+            if (keys['KeyS']) moveVector.z = 1;
+            if (keys['KeyA']) moveVector.x = -1;
+            if (keys['KeyD']) moveVector.x = 1;
+
+            if (moveVector.lengthSq() > 0) {
+                moveVector.normalize();
+
+                // カメラの向きに合わせて移動方向を回転
+                const euler = new THREE.Euler(0, cameraYaw, 0, 'YXZ');
+                moveVector.applyEuler(euler);
+
+                playerGroup.position.addScaledVector(moveVector, speed * delta);
+
+                // 移動範囲の制限
+                playerGroup.position.x = Math.max(-30, Math.min(30, playerGroup.position.x));
+                playerGroup.position.z = Math.max(-30, Math.min(30, playerGroup.position.z));
+            }
+
+            // エイムアシスト処理
+            if (aimAssistEnabled && targets.length > 0) {
+                applyAimAssist(delta);
+            }
+
+            // カメラの回転適用
+            playerGroup.rotation.y = cameraYaw;
+            camera.rotation.x = cameraPitch;
+
+            // 射撃の反動復元
+            recoilSpread = THREE.MathUtils.lerp(recoilSpread, 0, delta * 10);
+        }
+
+        // 磁気エイムアシスト (レティクル付近のターゲットへ緩やかに吸引)
+        function applyAimAssist(delta) {
+            const raycaster = new THREE.Raycaster();
+            const center = new THREE.Vector2(0, 0);
+            raycaster.setFromCamera(center, camera);
+
+            let closestTarget = null;
+            let minAngle = 0.25; // アシストが効く角度範囲（ラジアン）
+
+            const camDir = new THREE.Vector3();
+            camera.getWorldDirection(camDir);
+
+            targets.forEach(t => {
+                const targetDir = new THREE.Vector3().subVectors(t.position, camera.getWorldPosition(new THREE.Vector3())).normalize();
+                const angle = camDir.angleTo(targetDir);
+
+                if (angle < minAngle) {
+                    minAngle = angle;
+                    closestTarget = t;
+                }
+            });
+
+            if (closestTarget) {
+                // ターゲットの方向へカメラを微補正
+                const targetPos = closestTarget.position.clone();
+                const camPos = camera.getWorldPosition(new THREE.Vector3());
+                const dir = new THREE.Vector3().subVectors(targetPos, camPos).normalize();
+
+                const targetYaw = Math.atan2(-dir.x, -dir.z);
+                const targetPitch = Math.asin(dir.y);
+
+                cameraYaw = THREE.MathUtils.lerp(cameraYaw, targetYaw, delta * 3.5);
+                cameraPitch = THREE.MathUtils.lerp(cameraPitch, targetPitch, delta * 3.5);
+            }
+        }
+
+        // --- 射撃・リロード機能 ---
+        function shoot() {
+            if (currentState !== GAME_STATE.PLAYING || isReloading) return;
+
+            if (ammo <= 0) {
+                reload();
+                return;
+            }
+
+            ammo--;
+            totalShots++;
+            soundFX.playShoot();
+
+            // バイブレーション（サポート時）
+            if (navigator.vibrate) navigator.vibrate(40);
+
+            // 銃反動アニメーション
+            gunMesh.position.z = -0.3;
+            gunMesh.rotation.x = 0.2;
+            recoilSpread = Math.min(recoilSpread + 15, 40);
+
+            // マズルフラッシュ
+            muzzleFlashLight.intensity = 3;
+            setTimeout(() => muzzleFlashLight.intensity = 0, 50);
+
+            // 判定用レイキャスト（拡散誤差付き）
+            const raycaster = new THREE.Raycaster();
+            const spreadX = (Math.random() - 0.5) * (recoilSpread * 0.002);
+            const spreadY = (Math.random() - 0.5) * (recoilSpread * 0.002);
+            
+            raycaster.setFromCamera(new THREE.Vector2(spreadX, spreadY), camera);
+
+            // ターゲット当たり判定
+            const targetMeshes = targets.map(t => t.children[0]); // コア球体
+            const intersects = raycaster.intersectObjects(targetMeshes);
+
+            if (intersects.length > 0) {
+                const hitMesh = intersects[0].object;
+                const targetGroup = hitMesh.parent;
+
+                soundFX.playHit();
+                totalHits++;
+                combo++;
+                if (combo > maxCombo) maxCombo = combo;
+
+                // ダメージ計算
+                targetGroup.userData.hp--;
+
+                // フラッシュ効果
+                hitMesh.material.emissiveIntensity = 2;
+                setTimeout(() => { if (hitMesh.material) hitMesh.material.emissiveIntensity = 0.8; }, 80);
+
+                if (targetGroup.userData.hp <= 0) {
+                    // 撃破
+                    const pts = targetGroup.userData.type.pts * Math.min(1 + Math.floor(combo / 5) * 0.5, 3.0);
+                    score += Math.round(pts);
+
+                    createExplosion(targetGroup.position, targetGroup.userData.type.color);
+
+                    // 配列から削除
+                    const idx = targets.indexOf(targetGroup);
+                    if (idx > -1) targets.splice(idx, 1);
+                    scene.remove(targetGroup);
+                }
+            } else {
+                // 外した場合コンボリセット
+                combo = 0;
+            }
+        }
+
+        function reload() {
+            if (isReloading || ammo === maxAmmo) return;
+            isReloading = true;
+            soundFX.playReload();
+
+            // 銃のリロードアニメーション (回転)
+            let reloadTimer = 0;
+            const interval = setInterval(() => {
+                reloadTimer += 0.1;
+                gunMesh.rotation.z = Math.sin(reloadTimer * Math.PI) * 1.5;
+                if (reloadTimer >= 1.0) {
+                    clearInterval(interval);
+                    ammo = maxAmmo;
+                    isReloading = false;
+                    gunMesh.rotation.z = 0;
+                }
+            }, 100);
+        }
+
+        function damagePlayer(amount) {
+            health -= amount;
+            soundFX.playHurt();
+
+            if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+
+            // ダメージ画面赤フラッシュ
+            const flash = document.getElementById('damage-flash');
+            flash.style.opacity = '1';
+            setTimeout(() => flash.style.opacity = '0', 200);
+
+            if (health <= 0) {
+                health = 0;
+                endGame('プレイヤーが大破しました！');
+            }
+        }
+
+        // --- 2D HUD (Canvas オーバーレイ) ---
+        const hudCanvas = document.getElementById('hud-canvas');
+        const hudCtx = hudCanvas.getContext('2d');
+
+        function resizeHud() {
+            hudCanvas.width = window.innerWidth;
+            hudCanvas.height = window.innerHeight;
+        }
+
+        function renderHUD() {
+            hudCtx.clearRect(0, 0, hudCanvas.width, hudCanvas.height);
+            if (currentState !== GAME_STATE.PLAYING) return;
+
+            const w = hudCanvas.width;
+            const h = hudCanvas.height;
+            const cx = w / 2;
+            const cy = h / 2;
+
+            // 1. レティクル (動的拡張)
+            hudCtx.save();
+            hudCtx.strokeStyle = '#00f0ff';
+            hudCtx.lineWidth = 2;
+            hudCtx.shadowBlur = 8;
+            hudCtx.shadowColor = '#00f0ff';
+
+            const gap = 8 + recoilSpread;
+            const len = 10;
+
+            // 4方向ライン
+            hudCtx.beginPath();
+            hudCtx.moveTo(cx - gap - len, cy); hudCtx.lineTo(cx - gap, cy);
+            hudCtx.moveTo(cx + gap, cy); hudCtx.lineTo(cx + gap + len, cy);
+            hudCtx.moveTo(cx, cy - gap - len); hudCtx.lineTo(cx, cy - gap);
+            hudCtx.moveTo(cx, cy + gap); hudCtx.lineTo(cx, cy + gap + len);
+            hudCtx.stroke();
+
+            // 照準ドット
+            hudCtx.fillStyle = '#ff0055';
+            hudCtx.beginPath();
+            hudCtx.arc(cx, cy, 2, 0, Math.PI * 2);
+            hudCtx.fill();
+            hudCtx.restore();
+
+            // 2. 上部スコア & タイム表示
+            hudCtx.save();
+            hudCtx.fillStyle = '#00f0ff';
+            hudCtx.font = '900 22px sans-serif';
+            hudCtx.fillText(`SCORE: ${score}`, 20, 40);
+
+            // コンボ表示
+            if (combo > 1) {
+                hudCtx.fillStyle = '#ff0055';
+                hudCtx.font = 'italic 900 24px sans-serif';
+                hudCtx.fillText(`${combo}x COMBO!`, 20, 70);
+            }
+
+            // タイマー表示
+            hudCtx.fillStyle = timeLeft < 10 ? '#ff0055' : '#ffffff';
+            hudCtx.font = '900 28px monospace';
+            hudCtx.textAlign = 'center';
+            hudCtx.fillText(`TIME: ${Math.ceil(timeLeft)}`, cx, 45);
+            hudCtx.restore();
+
+            // 3. 左下 体力ゲージ
+            hudCtx.save();
+            const hpWidth = 160;
+            const hpHeight = 12;
+            const hpX = 20;
+            const hpY = h - 180;
+
+            hudCtx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            hudCtx.fillRect(hpX, hpY, hpWidth, hpHeight);
+            hudCtx.strokeStyle = '#00f0ff';
+            hudCtx.strokeRect(hpX, hpY, hpWidth, hpHeight);
+
+            const currentHpW = (health / 100) * hpWidth;
+            hudCtx.fillStyle = health < 30 ? '#ff0055' : '#00f0ff';
+            hudCtx.fillRect(hpX, hpY, currentHpW, hpHeight);
+
+            hudCtx.fillStyle = '#ffffff';
+            hudCtx.font = '12px sans-serif';
+            hudCtx.fillText(`LIFE: ${health}%`, hpX, hpY - 5);
+            hudCtx.restore();
+
+            // 4. 右下 残弾数表示
+            hudCtx.save();
+            hudCtx.textAlign = 'right';
+            hudCtx.fillStyle = isReloading ? '#ffaa00' : '#00f0ff';
+            hudCtx.font = '900 26px monospace';
+            hudCtx.fillText(isReloading ? 'RELOADING...' : `AMMO: ${ammo} / ${maxAmmo}`, w - 25, h - 180);
+            hudCtx.restore();
+
+            // 5. 簡易レーダー (右上に配置)
+            renderRadar(w - 75, 75, 55);
+        }
+
+        // ミニマップ/レーダー描画
+        function renderRadar(rx, ry, radius) {
+            hudCtx.save();
+            hudCtx.translate(rx, ry);
+
+            // 背景円
+            hudCtx.beginPath();
+            hudCtx.arc(0, 0, radius, 0, Math.PI * 2);
+            hudCtx.fillStyle = 'rgba(5, 15, 25, 0.7)';
+            hudCtx.fill();
+            hudCtx.strokeStyle = 'rgba(0, 240, 255, 0.5)';
+            hudCtx.lineWidth = 2;
+            hudCtx.stroke();
+
+            // プレイヤー位置（中心）
+            hudCtx.fillStyle = '#00f0ff';
+            hudCtx.beginPath();
+            hudCtx.arc(0, 0, 3, 0, Math.PI * 2);
+            hudCtx.fill();
+
+            // ターゲットプロット
+            const radarScale = radius / 35; // 35mの範囲をカバー
+
+            targets.forEach(t => {
+                const relPos = t.position.clone().sub(playerGroup.position);
+                // プレイヤーの視角回転を考慮して相対位置を回転
+                const rotX = relPos.x * Math.cos(-cameraYaw) - relPos.z * Math.sin(-cameraYaw);
+                const rotZ = relPos.x * Math.sin(-cameraYaw) + relPos.z * Math.cos(-cameraYaw);
+
+                const mapX = rotX * radarScale;
+                const mapY = rotZ * radarScale;
+
+                // レーダー円内のみプロット
+                if (Math.hypot(mapX, mapY) < radius - 4) {
+                    hudCtx.fillStyle = '#' + t.userData.type.color.toString(16).padStart(6, '0');
+                    hudCtx.beginPath();
+                    hudCtx.arc(mapX, mapY, 3, 0, Math.PI * 2);
+                    hudCtx.fill();
+                }
+            });
+
+            hudCtx.restore();
+        }
+
+        // --- ゲームループ & 状態遷移 ---
+        function startGame() {
+            soundFX.init();
+            score = 0;
+            combo = 0;
+            maxCombo = 0;
+            health = 100;
+            timeLeft = 60;
+            ammo = maxAmmo;
+            isReloading = false;
+            totalShots = 0;
+            totalHits = 0;
+            cameraYaw = 0;
+            cameraPitch = 0;
+
+            // 既存ターゲットクリア
+            targets.forEach(t => scene.remove(t));
+            targets = [];
+
+            currentState = GAME_STATE.PLAYING;
+            document.getElementById('ui-overlay').classList.add('hidden');
+        }
+
+        function endGame(reason) {
+            currentState = GAME_STATE.GAMEOVER;
+
+            // ハイスコア更新
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('cyber_fps_highscore', highScore);
+            }
+
+            const accuracy = totalShots > 0 ? Math.round((totalHits / totalShots) * 100) : 0;
+
+            document.getElementById('gameover-reason').innerText = reason;
+            document.getElementById('final-score').innerText = score;
+            document.getElementById('final-combo').innerText = `${maxCombo}x`;
+            document.getElementById('final-accuracy').innerText = `${accuracy}%`;
+            document.getElementById('end-high-score').innerText = highScore;
+
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('gameover-screen').classList.remove('hidden');
+            document.getElementById('ui-overlay').classList.remove('hidden');
+        }
+
+        let spawnTimer = 0;
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const delta = Math.min(clock.getDelta(), 0.1);
+
+            if (currentState === GAME_STATE.PLAYING) {
+                // 制限時間カウントダウン
+                timeLeft -= delta;
+                if (timeLeft <= 0) {
+                    timeLeft = 0;
+                    endGame('タイムアップ！');
+                }
+
+                // スポーンタイマー
+                spawnTimer += delta;
+                if (spawnTimer >= 1.2) {
+                    spawnTarget();
+                    spawnTimer = 0;
+                }
+
+                // アニメーションおよび位置計算
+                updatePlayerMovement(delta);
+                updateTargets(delta);
+                updateParticles(delta);
+
+                // 銃の元の位置への復元
+                if (gunMesh) {
+                    gunMesh.position.z = THREE.MathUtils.lerp(gunMesh.position.z, -0.4, delta * 10);
+                    gunMesh.rotation.x = THREE.MathUtils.lerp(gunMesh.rotation.x, 0, delta * 10);
+                }
+            }
+
+            // 3D & 2D レンダリング
+            renderer.render(scene, camera);
+            renderHUD();
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            resizeHud();
+        }
+
+        // --- イベントリスナー & 初期化 ---
+        window.onload = () => {
+            init3D();
+            resizeHud();
+
+            // ボタンUIバインド
+            document.getElementById('btn-fire').addEventListener('touchstart', (e) => { e.preventDefault(); shoot(); }, { passive: false });
+            document.getElementById('btn-fire').addEventListener('click', shoot);
+
+            document.getElementById('btn-reload').addEventListener('click', reload);
+            
+            const btnAssist = document.getElementById('btn-assist');
+            btnAssist.addEventListener('click', () => {
+                aimAssistEnabled = !aimAssistEnabled;
+                btnAssist.classList.toggle('active', aimAssistEnabled);
+            });
+
+            document.getElementById('start-btn').addEventListener('click', startGame);
+            document.getElementById('restart-btn').addEventListener('click', startGame);
+
+            // ハイスコア初期表示
+            document.getElementById('start-high-score').innerText = highScore;
+
+            // アニメーション開始
+            animate();
+        };
+    </script>
+</body>
+</html>
