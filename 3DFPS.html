@@ -146,6 +146,25 @@
             box-shadow: 0 0 15px #00f0ff;
         }
 
+        /* PC Pointer Lock Banner */
+        #pc-lock-hint {
+            position: absolute;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 240, 255, 0.15);
+            border: 1px solid rgba(0, 240, 255, 0.5);
+            color: #00f0ff;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            pointer-events: none;
+            z-index: 20;
+            backdrop-filter: blur(4px);
+            text-shadow: 0 0 5px #00f0ff;
+        }
+
         /* Screen Flash / Damage Overlay */
         #damage-flash {
             position: absolute;
@@ -185,6 +204,9 @@
         <div class="scanlines"></div>
         <div id="damage-flash"></div>
 
+        <!-- PC Lock Hint Overlay -->
+        <div id="pc-lock-hint" class="hidden">画面クリックでマウス視点ロック (ESCで解除)</div>
+
         <!-- Touch Look Region for Aiming -->
         <div id="touch-look-zone"></div>
 
@@ -208,22 +230,45 @@
         <!-- UI Overlays (Start / Pause / Game Over) -->
         <div id="ui-overlay" class="absolute inset-0 z-30 flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
             <!-- Start Screen -->
-            <div id="start-screen" class="text-center max-w-md w-full bg-slate-900/90 border-2 border-cyan-500/50 p-6 rounded-2xl shadow-[0_0_30px_rgba(0,240,255,0.3)]">
-                <h1 class="text-4xl font-extrabold text-cyan-400 mb-2 neon-text-blue tracking-wider">CYBER STRIKER</h1>
-                <p class="text-xs text-pink-500 font-mono mb-6 tracking-widest uppercase">ネオン・シューティング・シミュレーター</p>
+            <div id="start-screen" class="text-center max-w-lg w-full bg-slate-900/90 border-2 border-cyan-500/50 p-6 rounded-2xl shadow-[0_0_30px_rgba(0,240,255,0.3)]">
+                <h1 class="text-4xl font-extrabold text-cyan-400 mb-1 neon-text-blue tracking-wider">CYBER STRIKER</h1>
+                <p class="text-xs text-pink-500 font-mono mb-4 tracking-widest uppercase">ネオン・シューティング・シミュレーター</p>
 
-                <div class="space-y-3 mb-6 text-left text-sm bg-slate-800/60 p-4 rounded-xl border border-slate-700">
-                    <div class="flex items-center gap-3">
-                        <i class="fa-solid fa-gamepad text-cyan-400 text-lg"></i>
-                        <span>左操作: 移動 / 右画面: エイム</span>
+                <!-- Controls Guide Tabs / Switcher -->
+                <div class="mb-4 bg-slate-800/80 p-1 rounded-xl flex">
+                    <button id="tab-pc" class="flex-1 py-1.5 text-xs font-bold rounded-lg transition bg-cyan-500 text-black">PC (キーボード/マウス)</button>
+                    <button id="tab-mobile" class="flex-1 py-1.5 text-xs font-bold text-slate-400 hover:text-white rounded-lg transition">スマホ (タッチ)</button>
+                </div>
+
+                <!-- PC Controls List -->
+                <div id="guide-pc" class="space-y-2 mb-6 text-left text-xs bg-slate-800/60 p-4 rounded-xl border border-slate-700">
+                    <div class="flex items-center justify-between">
+                        <span class="text-slate-300"><i class="fa-solid fa-computer text-cyan-400 w-5"></i> 視点移動:</span>
+                        <span class="text-cyan-400 font-mono font-bold">マウス移動 ( Pointer Lock )</span>
                     </div>
-                    <div class="flex items-center gap-3">
-                        <i class="fa-solid fa-bullseye text-pink-500 text-lg"></i>
-                        <span>右下の巨大ボタンで射撃</span>
+                    <div class="flex items-center justify-between">
+                        <span class="text-slate-300"><i class="fa-solid fa-mouse text-pink-500 w-5"></i> 射撃 / リロード:</span>
+                        <span class="text-pink-400 font-mono font-bold">左クリック / 右クリック (or Rキー)</span>
                     </div>
-                    <div class="flex items-center gap-3">
-                        <i class="fa-solid fa-wand-magic-sparkles text-amber-400 text-lg"></i>
-                        <span>エイムアシスト機能付き</span>
+                    <div class="flex items-center justify-between">
+                        <span class="text-slate-300"><i class="fa-solid fa-keyboard text-amber-400 w-5"></i> 移動 / ジャンプ:</span>
+                        <span class="text-amber-400 font-mono font-bold">[WASD / 矢印] / [Space]</span>
+                    </div>
+                </div>
+
+                <!-- Mobile Controls List -->
+                <div id="guide-mobile" class="hidden space-y-2 mb-6 text-left text-xs bg-slate-800/60 p-4 rounded-xl border border-slate-700">
+                    <div class="flex items-center justify-between">
+                        <span class="text-slate-300"><i class="fa-solid fa-gamepad text-cyan-400 w-5"></i> 移動 / 視点:</span>
+                        <span class="text-cyan-400 font-mono font-bold">左ジョイスティック / 右画面スワイプ</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-slate-300"><i class="fa-solid fa-bullseye text-pink-500 w-5"></i> 射撃 / リロード:</span>
+                        <span class="text-pink-400 font-mono font-bold">右下赤ボタン / 黄色ボタン</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-slate-300"><i class="fa-solid fa-wand-magic-sparkles text-amber-400 w-5"></i> エイム補正:</span>
+                        <span class="text-amber-400 font-mono font-bold">エイムアシストボタン ON/OFF</span>
                     </div>
                 </div>
 
@@ -300,6 +345,13 @@
         let totalHits = 0;
         let highScore = localStorage.getItem('cyber_fps_highscore') || 0;
         let aimAssistEnabled = true;
+
+        // 物理・ジャンプパラメータ
+        let playerVelocityY = 0;
+        let isGrounded = true;
+        const gravity = -18.0;
+        const jumpStrength = 7.5;
+        const defaultEyeHeight = 1.6;
 
         // --- Web Audio API (効果音合成) ---
         class SoundFX {
@@ -766,7 +818,7 @@
             joystickMove.y = dy / maxRadius;
         }
 
-        // 画面右ドラッグ視点移動
+        // 画面右ドラッグ視点移動 (スマホ)
         touchLookZone.addEventListener('touchstart', (e) => {
             e.preventDefault();
             if (lookTouchId === null) {
@@ -788,12 +840,92 @@
             lastLookPos = { x: touch.clientX, y: touch.clientY };
         }
 
-        // キーボード操作（PCテスト用デバッグサポート）
+        // --- PC キーボード・マウス・Pointer Lock 処理 ---
         const keys = {};
-        window.addEventListener('keydown', (e) => keys[e.code] = true);
+        let isPointerLocked = false;
+
+        window.addEventListener('keydown', (e) => {
+            keys[e.code] = true;
+
+            if (currentState === GAME_STATE.PLAYING) {
+                // [R] キーでリロード
+                if (e.code === 'KeyR') reload();
+
+                // [Space] キーでジャンプ
+                if (e.code === 'Space' && isGrounded) {
+                    playerVelocityY = jumpStrength;
+                    isGrounded = false;
+                }
+            }
+        });
+
         window.addEventListener('keyup', (e) => keys[e.code] = false);
 
-        // プレイヤーの移動ロジック
+        // コンテキストメニュー（右クリックメニュー）の無効化
+        window.addEventListener('contextmenu', (e) => e.preventDefault());
+
+        // PC マウスの右・左クリック制御
+        window.addEventListener('mousedown', (e) => {
+            if (currentState !== GAME_STATE.PLAYING) return;
+
+            // Pointer Lockが無効ならロックを要請
+            if (!isPointerLocked && !('ontouchstart' in window && window.innerWidth < 768)) {
+                requestPointerLock();
+                return;
+            }
+
+            if (e.button === 0) {
+                // 左クリック: 射撃
+                shoot();
+            } else if (e.button === 2) {
+                // 右クリック: リロード
+                reload();
+            }
+        });
+
+        // PC マウス移動による視点操作
+        window.addEventListener('mousemove', (e) => {
+            if (currentState === GAME_STATE.PLAYING && isPointerLocked) {
+                const mouseSensitivity = 0.0022;
+                cameraYaw -= e.movementX * mouseSensitivity;
+                cameraPitch -= e.movementY * mouseSensitivity;
+                cameraPitch = Math.max(-maxPitch, Math.min(maxPitch, cameraPitch));
+            }
+        });
+
+        // Pointer Lock 状態監視
+        function requestPointerLock() {
+            const element = document.body;
+            element.requestPointerLock = element.requestPointerLock || element.mozRequestPointerLock || element.webkitRequestPointerLock;
+            if (element.requestPointerLock) {
+                element.requestPointerLock();
+            }
+        }
+
+        document.addEventListener('pointerlockchange', onPointerLockChange);
+        document.addEventListener('mozpointerlockchange', onPointerLockChange);
+        document.addEventListener('webkitpointerlockchange', onPointerLockChange);
+
+        function onPointerLockChange() {
+            const lockElement = document.pointerLockElement || document.mozPointerLockElement || document.webkitPointerLockElement;
+            isPointerLocked = (lockElement === document.body);
+
+            const hint = document.getElementById('pc-lock-hint');
+            if (currentState === GAME_STATE.PLAYING && !isPointerLocked) {
+                hint.classList.remove('hidden');
+            } else {
+                hint.classList.add('hidden');
+            }
+        }
+
+        // ゲーム画面クリックで再ロック
+        document.getElementById('game-container').addEventListener('click', () => {
+            if (currentState === GAME_STATE.PLAYING && !isPointerLocked) {
+                requestPointerLock();
+            }
+        });
+
+        // プレイヤーの移動 & 物理演算ロジック
         function updatePlayerMovement(delta) {
             const speed = 7.0;
             const moveVector = new THREE.Vector3();
@@ -804,11 +936,11 @@
                 moveVector.z = joystickMove.y;
             }
 
-            // PC WASDサポート
-            if (keys['KeyW']) moveVector.z = -1;
-            if (keys['KeyS']) moveVector.z = 1;
-            if (keys['KeyA']) moveVector.x = -1;
-            if (keys['KeyD']) moveVector.x = 1;
+            // PC WASD / 矢印キー サポート
+            if (keys['KeyW'] || keys['ArrowUp']) moveVector.z = -1;
+            if (keys['KeyS'] || keys['ArrowDown']) moveVector.z = 1;
+            if (keys['KeyA'] || keys['ArrowLeft']) moveVector.x = -1;
+            if (keys['KeyD'] || keys['ArrowRight']) moveVector.x = 1;
 
             if (moveVector.lengthSq() > 0) {
                 moveVector.normalize();
@@ -822,6 +954,17 @@
                 // 移動範囲の制限
                 playerGroup.position.x = Math.max(-30, Math.min(30, playerGroup.position.x));
                 playerGroup.position.z = Math.max(-30, Math.min(30, playerGroup.position.z));
+            }
+
+            // 重力 & ジャンプ物理処理
+            playerVelocityY += gravity * delta;
+            playerGroup.position.y += playerVelocityY * delta;
+
+            // 着地判定
+            if (playerGroup.position.y <= defaultEyeHeight) {
+                playerGroup.position.y = defaultEyeHeight;
+                playerVelocityY = 0;
+                isGrounded = true;
             }
 
             // エイムアシスト処理
@@ -1227,8 +1370,39 @@
                 btnAssist.classList.toggle('active', aimAssistEnabled);
             });
 
-            document.getElementById('start-btn').addEventListener('click', startGame);
-            document.getElementById('restart-btn').addEventListener('click', startGame);
+            // スタート画面 操作ガイド切り替えタブ
+            const tabPc = document.getElementById('tab-pc');
+            const tabMobile = document.getElementById('tab-mobile');
+            const guidePc = document.getElementById('guide-pc');
+            const guideMobile = document.getElementById('guide-mobile');
+
+            tabPc.addEventListener('click', () => {
+                tabPc.className = "flex-1 py-1.5 text-xs font-bold rounded-lg transition bg-cyan-500 text-black";
+                tabMobile.className = "flex-1 py-1.5 text-xs font-bold text-slate-400 hover:text-white rounded-lg transition";
+                guidePc.classList.remove('hidden');
+                guideMobile.classList.add('hidden');
+            });
+
+            tabMobile.addEventListener('click', () => {
+                tabMobile.className = "flex-1 py-1.5 text-xs font-bold rounded-lg transition bg-cyan-500 text-black";
+                tabPc.className = "flex-1 py-1.5 text-xs font-bold text-slate-400 hover:text-white rounded-lg transition";
+                guideMobile.classList.remove('hidden');
+                guidePc.classList.add('hidden');
+            });
+
+            document.getElementById('start-btn').addEventListener('click', () => {
+                startGame();
+                // デバイス判断でPCの場合はPointer Lockを要求
+                if (!('ontouchstart' in window && window.innerWidth < 768)) {
+                    requestPointerLock();
+                }
+            });
+            document.getElementById('restart-btn').addEventListener('click', () => {
+                startGame();
+                if (!('ontouchstart' in window && window.innerWidth < 768)) {
+                    requestPointerLock();
+                }
+            });
 
             // ハイスコア初期表示
             document.getElementById('start-high-score').innerText = highScore;
